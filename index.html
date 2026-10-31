@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System Explorer - Interactive Prototype</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        space: {
+                            900: '#070913',
+                            800: '#0d1127',
+                            700: '#161d3d',
+                            600: '#212b54',
+                        },
+                        planet: {
+                            sun: '#FF9F1C',
+                            mercury: '#A0AAB2',
+                            venus: '#F4A261',
+                            earth: '#2A9D8F',
+                            mars: '#E76F51',
+                            jupiter: '#E9C46A',
+                            saturn: '#F4E285',
+                            uranus: '#48CAE4',
+                            neptune: '#0077B6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Space Grid Background matching wireframe aesthetic */
+        .space-grid-dark {
+            background-color: #070913;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        .space-grid-light {
+            background-color: #f8fafc;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        /* Custom subtle glow effects */
+        .glow-sun {
+            box-shadow: 0 0 45px rgba(255, 159, 28, 0.5);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.5);
+        }
+    </style>
+</head>
+<body id="app-body" class="space-grid-dark text-gray-100 font-sans h-full transition-colors duration-300 flex flex-col overflow-hidden">
+
+    <!-- GLOBAL NAVBAR HEADER -->
+    <header class="h-16 bg-space-800/90 dark:bg-space-800/90 backdrop-blur-md border-b border-gray-800/80 dark:border-gray-800/80 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 transition-colors">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-300 flex items-center justify-center text-space-900 font-black shadow-lg shadow-amber-500/20">
+                <i data-lucide="orbit" class="w-5 h-5 text-space-900"></i>
+            </div>
+            <div>
+                <h1 class="text-base sm:text-lg font-bold tracking-tight text-white dark:text-white flex items-center gap-2">
+                    Solar System <span class="text-amber-400">Explorer</span>
+                </h1>
+                <p class="text-[10px] text-gray-400 leading-none hidden sm:block">Interactive Orbital Mechanics & Scale Prototype</p>
+            </div>
+        </div>
+
+        <!-- CENTER NAVIGATION TABS (FUNCTIONALITY BUTTONS) -->
+        <nav class="hidden md:flex items-center p-1 bg-space-900/80 dark:bg-space-900/80 border border-gray-800 dark:border-gray-800 rounded-xl">
+            <button onclick="switchTab('tab-map')" id="btn-tab-map" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-space-900 shadow-sm transition">
+                <i data-lucide="globe" class="w-3.5 h-3.5 inline mr-1.5"></i> Orbits Map
+            </button>
+            <button onclick="switchTab('tab-distances')" id="btn-tab-distances" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition">
+                <i data-lucide="ruler" class="w-3.5 h-3.5 inline mr-1.5"></i> Planet Distances
+            </button>
+            <button onclick="switchTab('tab-comparator')" id="btn-tab-comparator" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition">
+                <i data-lucide="scaling" class="w-3.5 h-3.5 inline mr-1.5"></i> Size Comparator
+            </button>
+        </nav>
+
+        <!-- RIGHT HEADER CONTROLS -->
+        <div class="flex items-center gap-3">
+            <!-- Global Search -->
+            <div class="relative hidden lg:block w-52">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="global-search" oninput="handleGlobalSearch(this.value)" placeholder="Search planets, moons..." class="w-full pl-9 pr-3 py-1.5 bg-space-900/90 dark:bg-space-900/90 border border-gray-700/80 dark:border-gray-700/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-100 placeholder-gray-500">
+                <div id="search-results" class="hidden absolute top-full mt-2 left-0 right-0 bg-space-800 border border-gray-700 rounded-xl shadow-2xl py-2 z-50 max-h-60 overflow-y-auto"></div>
+            </div>
+
+            <!-- Theme Switcher -->
+            <button onclick="toggleTheme()" class="p-2 rounded-xl bg-space-900/60 border border-gray-800 text-gray-400 hover:text-white transition" title="Toggle Theme">
+                <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                <i data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+            </button>
+
+            <!-- Mobile Nav Dropdown -->
+            <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-xl bg-space-900 border border-gray-800 text-gray-400 hover:text-white">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MOBILE NAVIGATION MENU -->
+    <div id="mobile-menu" class="hidden md:hidden bg-space-800 border-b border-gray-800 p-4 space-y-2 shrink-0 z-20">
+        <button onclick="switchTab('tab-map'); toggleMobileMenu()" class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold bg-amber-500 text-space-900 flex items-center gap-2">
+            <i data-lucide="globe" class="w-4 h-4"></i> Orbits Map
+        </button>
+        <button onclick="switchTab('tab-distances'); toggleMobileMenu()" class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-300 hover:bg-space-700 flex items-center gap-2">
+            <i data-lucide="ruler" class="w-4 h-4"></i> Planet Distances
+        </button>
+        <button onclick="switchTab('tab-comparator'); toggleMobileMenu()" class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-300 hover:bg-space-700 flex items-center gap-2">
+            <i data-lucide="scaling" class="w-4 h-4"></i> Size Comparator
+        </button>
+    </div>
+
+    <!-- MAIN APP CONTENT AREA -->
+    <main class="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+
+        <!-- ========================================== -->
+        <!-- VIEW 1: HOME / ORBITS MAP (Wireframe #1) -->
+        <!-- ========================================== -->
+        <section id="tab-map" class="tab-content flex-1 flex flex-col h-full relative">
+            
+            <!-- Map Top Bar: Date & Quick Actions -->
+            <div class="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+                <div class="bg-space-800/95 border border-gray-700/80 rounded-2xl px-4 py-2.5 shadow-xl backdrop-blur-md pointer-events-auto flex items-center gap-3">
+                    <i data-lucide="calendar" class="w-4 h-4 text-amber-400"></i>
+                    <div>
+                        <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none">Simulation Date</p>
+                        <p id="current-sim-date-display" class="text-xs font-bold text-white mt-0.5 leading-none">10/30/2026</p>
+                    </div>
+                    <input type="date" id="sim-date-picker" value="2026-10-30" onchange="onDateInputChange(this.value)" class="bg-space-900 border border-gray-700 rounded-lg text-xs px-2 py-1 text-white focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer">
+                </div>
+
+                <div class="bg-space-800/95 border border-gray-700/80 rounded-2xl px-4 py-2 shadow-xl backdrop-blur-md pointer-events-auto flex items-center gap-2">
+                    <button onclick="resetDateToNow()" class="px-3 py-1.5 bg-space-700 hover:bg-space-600 rounded-xl text-xs font-semibold text-gray-200 transition flex items-center gap-1.5">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-amber-400"></i> Reset Today
+                    </button>
+                    <button onclick="toggleFastForward()" id="ff-btn" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-semibold text-white transition flex items-center gap-1.5 shadow-md">
+                        <i data-lucide="fast-forward" class="w-3.5 h-3.5"></i> Fast-Forward Time
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container for Solar System Orbits Map -->
+            <div id="canvas-wrapper" class="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing overflow-hidden">
+                <canvas id="solarCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Map Bottom Bar Controls matching wireframe mockup -->
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-4 bg-space-800/95 border border-gray-700/80 px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-md max-w-[90%] sm:max-w-auto">
+                <button onclick="focusRandomPlanet()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs shadow-lg transition flex items-center gap-2">
+                    <i data-lucide="compass" class="w-4 h-4"></i> Explore the system
+                </button>
+                <div class="h-5 w-px bg-gray-700"></div>
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-300">
+                    <i data-lucide="mouse-pointer-click" class="w-4 h-4 text-amber-400"></i> Click planet to inspect
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VIEW 2: PLANET DISTANCES TABLE (Wireframe #2) -->
+        <!-- ========================================== -->
+        <section id="tab-distances" class="tab-content flex-1 hidden flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <div class="max-w-5xl w-full mx-auto space-y-6">
+                
+                <!-- Section Header Controls -->
+                <div class="bg-space-800/80 border border-gray-800 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                            Distances of the Solar System Objects
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Calculated orbital mechanics sorted dynamically from closest to furthest.</p>
+                    </div>
+
+                    <!-- Filter Controls (Wireframe accurate layout) -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Change Date Button -->
+                        <div class="flex items-center bg-space-900 border border-gray-700 rounded-xl px-3 py-1.5">
+                            <i data-lucide="calendar" class="w-4 h-4 text-amber-400 mr-2"></i>
+                            <input type="date" id="distance-date-picker" value="2026-10-30" onchange="onDateInputChange(this.value)" class="bg-transparent text-xs text-white focus:outline-none cursor-pointer">
+                        </div>
+
+                        <!-- Earth vs Sun Toggle -->
+                        <div class="bg-space-900 border border-gray-700 p-1 rounded-xl flex items-center">
+                            <button onclick="setDistanceReference('Sun')" id="ref-sun-btn" class="px-3 py-1 rounded-lg text-xs font-semibold bg-amber-500 text-space-900 shadow-sm transition">From Sun</button>
+                            <button onclick="setDistanceReference('Earth')" id="ref-earth-btn" class="px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition">From Earth</button>
+                        </div>
+
+                        <!-- Unit Toggle (KM vs Mi) -->
+                        <div class="bg-space-900 border border-gray-700 p-1 rounded-xl flex items-center">
+                            <button onclick="setDistanceUnit('KM')" id="unit-km-btn" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 shadow-sm transition">KM</button>
+                            <button onclick="setDistanceUnit('Mi')" id="unit-mi-btn" class="px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition">Mi</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distances Data Table -->
+                <div class="bg-space-800/80 border border-gray-800 rounded-2xl shadow-xl overflow-hidden backdrop-blur-md">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-space-900/90 border-b border-gray-800 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                                    <th class="py-4 px-6">Celestial Object</th>
+                                    <th class="py-4 px-6 text-right">Distance (<span id="table-unit-header">KM</span>)</th>
+                                    <th class="py-4 px-6 text-right">Distance (AU)</th>
+                                    <th class="py-4 px-6 text-center">Relative Proximity</th>
+                                    <th class="py-4 px-6 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distances-table-body" class="divide-y divide-gray-800/60 text-xs">
+                                <!-- Populated dynamically by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VIEW 3: SIZE COMPARATOR TOOL (Wireframe #3) -->
+        <!-- ========================================== -->
+        <section id="tab-comparator" class="tab-content flex-1 hidden flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <div class="max-w-5xl w-full mx-auto space-y-6">
+                
+                <!-- Section Header -->
+                <div class="bg-space-800/80 border border-gray-800 rounded-2xl p-6 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                            Size Comparator Tool
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Select two celestial bodies from the database to visually compare their relative scales by radius.</p>
+                    </div>
+
+                    <!-- Unit Switcher for Comparator -->
+                    <div class="bg-space-900 border border-gray-700 p-1 rounded-xl flex items-center self-start sm:self-auto">
+                        <button onclick="setComparatorUnit('KM')" id="comp-km-btn" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 transition">KM</button>
+                        <button onclick="setComparatorUnit('Mi')" id="comp-mi-btn" class="px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition">Mi</button>
+                    </div>
+                </div>
+
+                <!-- Comparator Layout Grid (Select Controls Left, Visual Display Right) -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    
+                    <!-- Left: Control Selectors -->
+                    <div class="lg:col-span-5 space-y-6 flex flex-col justify-between">
+                        
+                        <!-- Object A Box -->
+                        <div class="bg-space-800/80 border border-gray-800 rounded-2xl p-5 shadow-lg space-y-3">
+                            <label class="block text-xs font-bold text-amber-400 uppercase tracking-wider">Select Primary Object A</label>
+                            <select id="select-object-a" onchange="renderSizeComparison()" class="w-full bg-space-900 border border-gray-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <!-- Dynamically loaded -->
+                            </select>
+                            <div id="object-a-meta" class="pt-2 border-t border-gray-800 flex justify-between text-xs text-gray-300">
+                                <span>Radius:</span>
+                                <span id="object-a-radius" class="font-bold text-white">6,371 KM</span>
+                            </div>
+                        </div>
+
+                        <!-- Object B Box -->
+                        <div class="bg-space-800/80 border border-gray-800 rounded-2xl p-5 shadow-lg space-y-3">
+                            <label class="block text-xs font-bold text-teal-400 uppercase tracking-wider">Select Comparison Object B</label>
+                            <select id="select-object-b" onchange="renderSizeComparison()" class="w-full bg-space-900 border border-gray-700 rounded-xl px-4 py-2.5 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <!-- Dynamically loaded -->
+                            </select>
+                            <div id="object-b-meta" class="pt-2 border-t border-gray-800 flex justify-between text-xs text-gray-300">
+                                <span>Radius:</span>
+                                <span id="object-b-radius" class="font-bold text-white">3,390 KM</span>
+                            </div>
+                        </div>
+
+                        <!-- Quick Summary Insights -->
+                        <div class="bg-gradient-to-br from-space-800 to-space-700 border border-gray-700/60 rounded-2xl p-5 shadow-xl">
+                            <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Comparison Insights
+                            </h4>
+                            <p id="comparator-insight-text" class="text-xs text-gray-300 mt-2 leading-relaxed">
+                                Loading comparison math...
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Visual Circles Representation Canvas/SVG -->
+                    <div class="lg:col-span-7 bg-space-800/80 border border-gray-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between items-center min-h-[360px] relative overflow-hidden backdrop-blur-md">
+                        <span class="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1 rounded-full uppercase tracking-wider mb-4">Visual Scale Display (Radius Proportions)</span>
+
+                        <div class="flex-1 w-full flex items-center justify-center gap-8 sm:gap-12 py-6">
+                            <!-- Object A Circle Container -->
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <div id="circle-container-a" class="flex items-center justify-center transition-all duration-500">
+                                    <div id="visual-circle-a" class="rounded-full shadow-2xl transition-all duration-500 border-2 border-white/20"></div>
+                                </div>
+                                <span id="visual-name-a" class="text-xs font-bold text-white mt-3">Earth</span>
+                            </div>
+
+                            <!-- Object B Circle Container -->
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <div id="circle-container-b" class="flex items-center justify-center transition-all duration-500">
+                                    <div id="visual-circle-b" class="rounded-full shadow-2xl transition-all duration-500 border-2 border-white/20"></div>
+                                </div>
+                                <span id="visual-name-b" class="text-xs font-bold text-white mt-3">Mars</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full text-center border-t border-gray-800 pt-3 text-[11px] text-gray-400">
+                            * Note: Dynamic proportions scaled gracefully for optimal onscreen presentation.
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- PLANET DETAIL MODAL POPUP -->
+    <div id="planet-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-space-900/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-200">
+        <div id="planet-modal-card" class="bg-space-800 border border-gray-700/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl transform scale-95 transition-transform duration-200 relative overflow-hidden">
+            <!-- Background Glow Color -->
+            <div id="modal-glow-bg" class="absolute -top-24 -right-24 w-56 h-56 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+
+            <div class="flex items-start justify-between border-b border-gray-700/60 pb-4 relative z-10">
+                <div class="flex items-center gap-3">
+                    <div id="modal-planet-color" class="w-8 h-8 rounded-full border-2 border-white/30 shadow-md"></div>
+                    <div>
+                        <h3 id="modal-planet-title" class="text-xl font-bold text-white tracking-tight">Earth</h3>
+                        <p id="modal-planet-type" class="text-[11px] text-gray-400">Terrestrial Planet</p>
+                    </div>
+                </div>
+                <button onclick="closePlanetModal()" class="text-gray-400 hover:text-white p-1 rounded-xl hover:bg-space-700 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-4 relative z-10">
+                <p id="modal-planet-desc" class="text-xs text-gray-300 leading-relaxed">
+                    Earth is the third planet from the Sun and the only astronomical object known to harbor life.
+                </p>
+
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-space-900/90 border border-gray-700/60 rounded-xl p-3">
+                        <span class="text-[10px] text-gray-400 font-medium block">Mean Radius</span>
+                        <span id="modal-planet-radius" class="text-sm font-bold text-white mt-0.5 block">6,371 KM</span>
+                    </div>
+                    <div class="bg-space-900/90 border border-gray-700/60 rounded-xl p-3">
+                        <span class="text-[10px] text-gray-400 font-medium block">Dist. from Sun</span>
+                        <span id="modal-planet-dist-sun" class="text-sm font-bold text-amber-400 mt-0.5 block">149.6M KM</span>
+                    </div>
+                    <div class="bg-space-900/90 border border-gray-700/60 rounded-xl p-3">
+                        <span class="text-[10px] text-gray-400 font-medium block">Orbital Period</span>
+                        <span id="modal-planet-period" class="text-sm font-bold text-white mt-0.5 block">365.25 Days</span>
+                    </div>
+                    <div class="bg-space-900/90 border border-gray-700/60 rounded-xl p-3">
+                        <span class="text-[10px] text-gray-400 font-medium block">Known Moons</span>
+                        <span id="modal-planet-moons" class="text-sm font-bold text-teal-400 mt-0.5 block">1 Moon</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-gray-700/60 flex items-center justify-between relative z-10">
+                <button onclick="inspectInComparator()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-space-900 font-semibold rounded-xl text-xs shadow-md transition flex items-center gap-1.5">
+                    <i data-lucide="scaling" class="w-4 h-4"></i> Compare Size
+                </button>
+                <button onclick="closePlanetModal()" class="px-4 py-2 bg-space-700 hover:bg-space-600 text-white rounded-xl text-xs font-semibold transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- MAIN JAVASCRIPT SIMULATION LOGIC -->
+    <script>
+        // CELESTIAL DATABASE (ACCURATE ASTRONOMICAL METADATA)
+        const PLANETS = [
+            {
+                id: 'sun',
+                name: 'Sun',
+                type: 'Yellow Dwarf Star',
+                color: '#FF9F1C',
+                radiusKM: 696340,
+                distSunAU: 0.0,
+                orbitalDays: 0,
+                moons: 0,
+                orbitRadiusPx: 0,
+                speed: 0,
+                desc: 'The Sun is the star at the center of the Solar System. It is a nearly perfect ball of hot plasma providing light and heat energy to all planets.'
+            },
+            {
+                id: 'mercury',
+                name: 'Mercury',
+                type: 'Terrestrial Planet',
+                color: '#A0AAB2',
+                radiusKM: 2439.7,
+                distSunAU: 0.387,
+                orbitalDays: 88,
+                moons: 0,
+                orbitRadiusPx: 45,
+                speed: 0.04,
+                desc: 'Mercury is the smallest planet in the Solar System and the closest to the Sun. Its orbit around the Sun takes 87.97 Earth days.'
+            },
+            {
+                id: 'venus',
+                name: 'Venus',
+                type: 'Terrestrial Planet',
+                color: '#F4A261',
+                radiusKM: 6051.8,
+                distSunAU: 0.723,
+                orbitalDays: 224.7,
+                moons: 0,
+                orbitRadiusPx: 75,
+                speed: 0.025,
+                desc: 'Venus is the second planet from the Sun. It has a dense atmosphere that traps heat in a runaway greenhouse effect.'
+            },
+            {
+                id: 'earth',
+                name: 'Earth',
+                type: 'Terrestrial Planet',
+                color: '#2A9D8F',
+                radiusKM: 6371.0,
+                distSunAU: 1.000,
+                orbitalDays: 365.25,
+                moons: 1,
+                orbitRadiusPx: 110,
+                speed: 0.018,
+                desc: 'Earth is the third planet from the Sun and the only astronomical object known to harbor life and liquid water oceans.'
+            },
+            {
+                id: 'mars',
+                name: 'Mars',
+                type: 'Terrestrial Planet',
+                color: '#E76F51',
+                radiusKM: 3389.5,
+                distSunAU: 1.524,
+                orbitalDays: 687,
+                moons: 2,
+                orbitRadiusPx: 145,
+                speed: 0.014,
+                desc: 'Mars is the fourth planet from the Sun, often called the "Red Planet" due to iron oxide on its surface giving it a reddish tint.'
+            },
+            {
+                id: 'jupiter',
+                name: 'Jupiter',
+                type: 'Gas Giant',
+                color: '#E9C46A',
+                radiusKM: 69911,
+                distSunAU: 5.204,
+                orbitalDays: 4333,
+                moons: 95,
+                orbitRadiusPx: 195,
+                speed: 0.009,
+                desc: 'Jupiter is the fifth planet from the Sun and the largest in the Solar System. It is a gas giant with a mass more than two and a half times that of all other planets combined.'
+            },
+            {
+                id: 'saturn',
+                name: 'Saturn',
+                type: 'Gas Giant',
+                color: '#F4E285',
+                radiusKM: 58232,
+                distSunAU: 9.582,
+                orbitalDays: 10759,
+                moons: 146,
+                orbitRadiusPx: 245,
+                speed: 0.006,
+                desc: 'Saturn is the sixth planet from the Sun and the second-largest in the Solar System, famous for its prominent ring system.'
+            },
+            {
+                id: 'uranus',
+                name: 'Uranus',
+                type: 'Ice Giant',
+                color: '#48CAE4',
+                radiusKM: 25362,
+                distSunAU: 19.20,
+                orbitalDays: 30687,
+                moons: 28,
+                orbitRadiusPx: 290,
+                speed: 0.004,
+                desc: 'Uranus is the seventh planet from the Sun. It has the coldest planetary atmosphere in the Solar System and rotates on its side.'
+            },
+            {
+                id: 'neptune',
+                name: 'Neptune',
+                type: 'Ice Giant',
+                color: '#0077B6',
+                radiusKM: 24622,
+                distSunAU: 30.05,
+                orbitalDays: 60190,
+                moons: 16,
+                orbitRadiusPx: 330,
+                speed: 0.003,
+                desc: 'Neptune is the eighth and farthest known solar planet from the Sun. It is a dark, cold ice giant whipped by supersonic winds.'
+            }
+        ];
+
+        // CONSTANTS & CONVERSIONS
+        const KM_TO_MI = 0.621371;
+        const AU_TO_KM = 149597870.7;
+
+        // APP STATE
+        let activeTab = 'tab-map';
+        let isFastForwarding = false;
+        let animationFrameId = null;
+        let simTimeOffset = 0; // Days passed
+        let distanceReference = 'Sun'; // 'Sun' or 'Earth'
+        let distanceUnit = 'KM'; // 'KM' or 'Mi'
+        let comparatorUnit = 'KM';
+        let selectedPlanetForModal = null;
+
+        // CANVAS STATE
+        let canvas, ctx;
+        let canvasWidth, canvasHeight;
+        let planetPositions = [];
+
+        // INITIALIZATION
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initCanvas();
+            initComparatorSelects();
+            renderDistancesTable();
+            renderSizeComparison();
+
+            window.addEventListener('resize', handleCanvasResize);
+        });
+
+        // ==========================================
+        // NAVIGATION & THEME CONTROLS
+        // ==========================================
+        function switchTab(tabId) {
+            activeTab = tabId;
+
+            // Toggle visibility of sections
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            // Toggle Header Tab Styles
+            const tabButtons = {
+                'tab-map': 'btn-tab-map',
+                'tab-distances': 'btn-tab-distances',
+                'tab-comparator': 'btn-tab-comparator'
+            };
+
+            Object.keys(tabButtons).forEach(key => {
+                const btn = document.getElementById(tabButtons[key]);
+                if (key === tabId) {
+                    btn.className = 'tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-space-900 shadow-sm transition';
+                } else {
+                    btn.className = 'tab-btn px-4 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+                }
+            });
+
+            if (tabId === 'tab-map') {
+                handleCanvasResize();
+            }
+        }
+
+        function toggleTheme() {
+            const body = document.getElementById('app-body');
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                body.className = 'space-grid-dark text-gray-100 font-sans h-full transition-colors duration-300 flex flex-col overflow-hidden';
+            } else {
+                body.className = 'space-grid-light text-gray-900 font-sans h-full transition-colors duration-300 flex flex-col overflow-hidden';
+            }
+            showToast('Theme mode toggled');
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        // ==========================================
+        // VIEW 1: SOLAR SYSTEM ORBITS CANVAS MAP
+        // ==========================================
+        function initCanvas() {
+            canvas = document.getElementById('solarCanvas');
+            ctx = canvas.getContext('2d');
+            handleCanvasResize();
+
+            // Click listener for inspecting planets
+            canvas.addEventListener('click', handleCanvasClick);
+
+            // Start animation loop
+            requestAnimationFrame(drawSolarSystem);
+        }
+
+        function handleCanvasResize() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (!wrapper || !canvas) return;
+            canvasWidth = wrapper.clientWidth;
+            canvasHeight = wrapper.clientHeight;
+            canvas.width = canvasWidth * window.devicePixelRatio;
+            canvas.height = canvasHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        function drawSolarSystem() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            const centerX = canvasWidth / 2;
+            const centerY = canvasHeight / 2;
+
+            // Responsive Scaling Factor
+            const maxRadius = Math.min(canvasWidth, canvasHeight) * 0.42;
+            const scaleFactor = maxRadius / 340;
+
+            planetPositions = [];
+
+            // 1. Draw Sun in the Center
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 18 * scaleFactor, 0, Math.PI * 2);
+            ctx.fillStyle = '#FF9F1C';
+            ctx.shadowColor = 'rgba(255, 159, 28, 0.8)';
+            ctx.shadowBlur = 25;
+            ctx.fill();
+            ctx.restore();
+
+            // Sun Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sun', centerX, centerY + 30 * scaleFactor);
+
+            planetPositions.push({
+                planet: PLANETS[0],
+                x: centerX,
+                y: centerY,
+                radius: 18 * scaleFactor
+            });
+
+            // If fast-forwarding, advance simulation offset
+            if (isFastForwarding) {
+                simTimeOffset += 0.8;
+                updateDateDisplayFromOffset();
+            }
+
+            // 2. Draw Orbits and Celestial Bodies
+            PLANETS.slice(1).forEach(p => {
+                const scaledOrbitRadius = p.orbitRadiusPx * scaleFactor;
+
+                // Draw Orbit Track Line
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, scaledOrbitRadius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Calculate Position based on speed and time offset
+                const angle = (simTimeOffset * p.speed * Math.PI) / 180;
+                const px = centerX + Math.cos(angle) * scaledOrbitRadius;
+                const py = centerY + Math.sin(angle) * scaledOrbitRadius;
+
+                // Visual planet sizing scale
+                let displaySize = Math.max(4, Math.log2(p.radiusKM) * 1.1) * Math.min(scaleFactor, 1.2);
+
+                // Draw Planet Body
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(px, py, displaySize, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.restore();
+
+                // Planet Name Label
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(p.name, px, py + displaySize + 12);
+
+                // Store hit box for interactivity
+                planetPositions.push({
+                    planet: p,
+                    x: px,
+                    y: py,
+                    radius: displaySize + 6
+                });
+            });
+
+            requestAnimationFrame(drawSolarSystem);
+        }
+
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Check collision with planet positions
+            for (let item of planetPositions) {
+                const dist = Math.hypot(clickX - item.x, clickY - item.y);
+                if (dist <= item.radius) {
+                    openPlanetModal(item.planet);
+                    return;
+                }
+            }
+        }
+
+        function toggleFastForward() {
+            isFastForwarding = !isFastForwarding;
+            const btn = document.getElementById('ff-btn');
+            if (isFastForwarding) {
+                btn.className = 'px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-space-900 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md';
+                btn.innerHTML = `<i data-lucide="pause" class="w-3.5 h-3.5"></i> Pause Fast-Forward`;
+                showToast('Fast-forward time activated');
+            } else {
+                btn.className = 'px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md';
+                btn.innerHTML = `<i data-lucide="fast-forward" class="w-3.5 h-3.5"></i> Fast-Forward Time`;
+            }
+            lucide.createIcons();
+        }
+
+        function onDateInputChange(dateStr) {
+            const baseDate = new Date('2026-10-30');
+            const newDate = new Date(dateStr);
+            const diffTime = newDate - baseDate;
+            simTimeOffset = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            updateDateDisplayFromOffset();
+            renderDistancesTable();
+            showToast(`Simulation updated to ${dateStr}`);
+        }
+
+        function resetDateToNow() {
+            simTimeOffset = 0;
+            isFastForwarding = false;
+            document.getElementById('sim-date-picker').value = '2026-10-30';
+            document.getElementById('distance-date-picker').value = '2026-10-30';
+            updateDateDisplayFromOffset();
+            renderDistancesTable();
+            showToast('Date reset to current time');
+        }
+
+        function updateDateDisplayFromOffset() {
+            const date = new Date('2026-10-30');
+            date.setDate(date.getDate() + Math.floor(simTimeOffset));
+            const formatted = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+            
+            document.getElementById('current-sim-date-display').innerText = formatted;
+        }
+
+        function focusRandomPlanet() {
+            const random = PLANETS[Math.floor(Math.random() * (PLANETS.length - 1)) + 1];
+            openPlanetModal(random);
+        }
+
+        // ==========================================
+        // VIEW 2: PLANET DISTANCES TABLE & LOGIC
+        // ==========================================
+        function setDistanceReference(ref) {
+            distanceReference = ref;
+            document.getElementById('ref-sun-btn').className = ref === 'Sun' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-amber-500 text-space-900 shadow-sm transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+            
+            document.getElementById('ref-earth-btn').className = ref === 'Earth' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-amber-500 text-space-900 shadow-sm transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+
+            renderDistancesTable();
+        }
+
+        function setDistanceUnit(unit) {
+            distanceUnit = unit;
+            document.getElementById('unit-km-btn').className = unit === 'KM' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 shadow-sm transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+
+            document.getElementById('unit-mi-btn').className = unit === 'Mi' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 shadow-sm transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+
+            document.getElementById('table-unit-header').innerText = unit;
+            renderDistancesTable();
+        }
+
+        function calculateCurrentDistances() {
+            const earthAngle = (simTimeOffset * PLANETS[3].speed * Math.PI) / 180;
+            const earthDistAU = 1.0;
+            const earthX = Math.cos(earthAngle) * earthDistAU;
+            const earthY = Math.sin(earthAngle) * earthDistAU;
+
+            return PLANETS.map(p => {
+                let currentAU = p.distSunAU;
+                
+                if (p.id === 'sun') {
+                    currentAU = distanceReference === 'Earth' ? 1.0 : 0.0;
+                } else if (distanceReference === 'Earth') {
+                    // Vector distance relative to Earth in 2D orbital space
+                    const angle = (simTimeOffset * p.speed * Math.PI) / 180;
+                    const px = Math.cos(angle) * p.distSunAU;
+                    const py = Math.sin(angle) * p.distSunAU;
+                    currentAU = Math.hypot(px - earthX, py - earthY);
+                }
+
+                const kmVal = currentAU * AU_TO_KM;
+                const miVal = kmVal * KM_TO_MI;
+
+                return {
+                    ...p,
+                    calcAU: currentAU,
+                    calcKM: kmVal,
+                    calcMi: miVal
+                };
+            });
+        }
+
+        function renderDistancesTable() {
+            const tbody = document.getElementById('distances-table-body');
+            tbody.innerHTML = '';
+
+            // Compute dynamic live distances & sort from closest to furthest
+            let data = calculateCurrentDistances();
+            data.sort((a, b) => a.calcAU - b.calcAU);
+
+            const maxAU = Math.max(...data.map(d => d.calcAU)) || 1;
+
+            data.forEach(item => {
+                const displayDist = distanceUnit === 'KM' 
+                    ? item.calcKM.toLocaleString('en-US', { maximumFractionDigits: 0 }) 
+                    : item.calcMi.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+                const proximityPct = Math.min(100, Math.max(8, (item.calcAU / maxAU) * 100));
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-space-700/40 transition border-b border-gray-800/40';
+                tr.innerHTML = `
+                    <td class="py-4 px-6 font-semibold text-white flex items-center gap-3">
+                        <span class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${item.color};"></span>
+                        ${item.name}
+                        <span class="text-[10px] text-gray-400 font-normal">(${item.type})</span>
+                    </td>
+                    <td class="py-4 px-6 text-right font-mono font-bold text-amber-400">
+                        ${displayDist} ${distanceUnit}
+                    </td>
+                    <td class="py-4 px-6 text-right font-mono text-gray-300">
+                        ${item.calcAU.toFixed(3)} AU
+                    </td>
+                    <td class="py-4 px-6">
+                        <div class="w-full bg-space-900 border border-gray-700 h-2 rounded-full overflow-hidden max-w-xs mx-auto">
+                            <div class="h-full rounded-full transition-all duration-300" style="width: ${proximityPct}%; background-color: ${item.color};"></div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 text-right">
+                        <button onclick='openPlanetModalById("${item.id}")' class="px-3 py-1 bg-space-700 hover:bg-space-600 text-gray-200 rounded-lg text-xs transition">
+                            Inspect
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ==========================================
+        // VIEW 3: SIZE COMPARATOR TOOL
+        // ==========================================
+        function initComparatorSelects() {
+            const selectA = document.getElementById('select-object-a');
+            const selectB = document.getElementById('select-object-b');
+
+            selectA.innerHTML = '';
+            selectB.innerHTML = '';
+
+            PLANETS.forEach((p, idx) => {
+                const optionA = document.createElement('option');
+                optionA.value = p.id;
+                optionA.innerText = `${p.name} (${p.radiusKM.toLocaleString()} KM radius)`;
+                if (p.id === 'earth') optionA.selected = true;
+
+                const optionB = document.createElement('option');
+                optionB.value = p.id;
+                optionB.innerText = `${p.name} (${p.radiusKM.toLocaleString()} KM radius)`;
+                if (p.id === 'mars') optionB.selected = true;
+
+                selectA.appendChild(optionA);
+                selectB.appendChild(optionB);
+            });
+        }
+
+        function setComparatorUnit(unit) {
+            comparatorUnit = unit;
+            document.getElementById('comp-km-btn').className = unit === 'KM' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+
+            document.getElementById('comp-mi-btn').className = unit === 'Mi' 
+                ? 'px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500 text-space-900 transition' 
+                : 'px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition';
+
+            renderSizeComparison();
+        }
+
+        function renderSizeComparison() {
+            const idA = document.getElementById('select-object-a').value;
+            const idB = document.getElementById('select-object-b').value;
+
+            const objA = PLANETS.find(p => p.id === idA);
+            const objB = PLANETS.find(p => p.id === idB);
+
+            if (!objA || !objB) return;
+
+            // Radii Conversion
+            const radiusA = comparatorUnit === 'KM' ? objA.radiusKM : objA.radiusKM * KM_TO_MI;
+            const radiusB = comparatorUnit === 'KM' ? objB.radiusKM : objB.radiusKM * KM_TO_MI;
+
+            document.getElementById('object-a-radius').innerText = `${radiusA.toLocaleString('en-US', {maximumFractionDigits:1})} ${comparatorUnit}`;
+            document.getElementById('object-b-radius').innerText = `${radiusB.toLocaleString('en-US', {maximumFractionDigits:1})} ${comparatorUnit}`;
+
+            document.getElementById('visual-name-a').innerText = objA.name;
+            document.getElementById('visual-name-b').innerText = objB.name;
+
+            // Render Scaled Visual Circles
+            const circleA = document.getElementById('visual-circle-a');
+            const circleB = document.getElementById('visual-circle-b');
+
+            // Ratio calculation
+            const maxRadius = Math.max(objA.radiusKM, objB.radiusKM);
+            const sizePxA = Math.max(24, Math.min(220, (objA.radiusKM / maxRadius) * 220));
+            const sizePxB = Math.max(24, Math.min(220, (objB.radiusKM / maxRadius) * 220));
+
+            circleA.style.width = `${sizePxA}px`;
+            circleA.style.height = `${sizePxA}px`;
+            circleA.style.backgroundColor = objA.color;
+
+            circleB.style.width = `${sizePxB}px`;
+            circleB.style.height = `${sizePxB}px`;
+            circleB.style.backgroundColor = objB.color;
+
+            // Compute comparison ratio
+            const ratio = (objA.radiusKM / objB.radiusKM).toFixed(2);
+            const volumeRatio = Math.pow(objA.radiusKM / objB.radiusKM, 3).toFixed(1);
+
+            let insightHtml = '';
+            if (objA.id === objB.id) {
+                insightHtml = `You are comparing <strong>${objA.name}</strong> to itself. Their scales and volumes are identical!`;
+            } else if (ratio > 1) {
+                insightHtml = `<strong>${objA.name}</strong> is approximately <strong>${ratio}x larger</strong> in radius than ${objB.name}, and could fit about <strong>${Number(volumeRatio).toLocaleString()}</strong> ${objB.name}(s) inside its volume!`;
+            } else {
+                const inverseRatio = (1 / ratio).toFixed(2);
+                insightHtml = `<strong>${objA.name}</strong> is approximately <strong>${inverseRatio}x smaller</strong> in radius than ${objB.name}.`;
+            }
+
+            document.getElementById('comparator-insight-text').innerHTML = insightHtml;
+        }
+
+        // ==========================================
+        // PLANET DETAIL MODAL POPUP SYSTEM
+        // ==========================================
+        function openPlanetModalById(id) {
+            const planet = PLANETS.find(p => p.id === id);
+            if (planet) openPlanetModal(planet);
+        }
+
+        function openPlanetModal(planet) {
+            selectedPlanetForModal = planet;
+            const modal = document.getElementById('planet-detail-modal');
+            const card = document.getElementById('planet-modal-card');
+
+            document.getElementById('modal-planet-title').innerText = planet.name;
+            document.getElementById('modal-planet-type').innerText = planet.type;
+            document.getElementById('modal-planet-desc').innerText = planet.desc;
+            document.getElementById('modal-planet-radius').innerText = `${planet.radiusKM.toLocaleString()} KM`;
+            document.getElementById('modal-planet-dist-sun').innerText = `${planet.distSunAU} AU`;
+            document.getElementById('modal-planet-period').innerText = planet.orbitalDays > 0 ? `${planet.orbitalDays} Days` : 'N/A';
+            document.getElementById('modal-planet-moons').innerText = `${planet.moons} Moon(s)`;
+
+            document.getElementById('modal-planet-color').style.backgroundColor = planet.color;
+            document.getElementById('modal-glow-bg').style.backgroundColor = planet.color;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModalPlanetModal() {
+            closePlanetModal();
+        }
+
+        function closePlanetModal() {
+            const modal = document.getElementById('planet-detail-modal');
+            const card = document.getElementById('planet-modal-card');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function inspectInComparator() {
+            if (!selectedPlanetForModal) return;
+            document.getElementById('select-object-a').value = selectedPlanetForModal.id;
+            closePlanetModal();
+            switchTab('tab-comparator');
+            renderSizeComparison();
+        }
+
+        // ==========================================
+        // GLOBAL SEARCH HANDLER
+        // ==========================================
+        function handleGlobalSearch(query) {
+            const resultsBox = document.getElementById('search-results');
+            if (!query.trim()) {
+                resultsBox.classList.add('hidden');
+                return;
+            }
+
+            const matches = PLANETS.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || p.type.toLowerCase().includes(query.toLowerCase()));
+            resultsBox.innerHTML = '';
+
+            if (matches.length === 0) {
+                resultsBox.innerHTML = `<div class="px-4 py-2 text-xs text-gray-400">No objects found</div>`;
+            } else {
+                matches.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-2 hover:bg-space-700 cursor-pointer flex items-center justify-between text-xs transition';
+                    div.innerHTML = `
+                        <span class="font-semibold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" style="background:${p.color}"></span> ${p.name}
+                        </span>
+                        <span class="text-[10px] text-gray-400">${p.type}</span>
+                    `;
+                    div.onclick = () => {
+                        openPlanetModal(p);
+                        resultsBox.classList.add('hidden');
+                        document.getElementById('global-search').value = '';
+                    };
+                    resultsBox.appendChild(div);
+                });
+            }
+
+            resultsBox.classList.remove('hidden');
+        }
+
+        // ==========================================
+        // TOAST NOTIFICATIONS
+        // ==========================================
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-space-800 border border-gray-700 text-white px-4 py-2.5 rounded-xl text-xs font-medium shadow-2xl flex items-center gap-2 transform translate-y-4 opacity-0 transition duration-300';
+            toast.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-amber-400"></i> ${message}`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
